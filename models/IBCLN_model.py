@@ -118,6 +118,8 @@ class IBCLNModel(BaseModel, torch.nn.Module):
                 self.image_paths = input['B_paths']
                 I = input['I']
                 T = input['T']
+                self.real_T2 = input['T2'].to(self.device)
+                self.real_T4 = input['T4'].to(self.device)
 
         self.real_T = T.to(self.device)
         self.real_I = I.to(self.device)
@@ -192,22 +194,22 @@ class IBCLNModel(BaseModel, torch.nn.Module):
                     self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i)
                 self.loss_SSIM_T += self.criterionSSIM(
                     self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i)
-                if not self.isNatural:
+                if not self.isNatural and self.isTrain:
                     self.loss_res += self.criterionIdt2(
-                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 10
+                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 3
                     self.loss_idt_R += self.criterionIdt(
-                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 5
+                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 3
                     self.loss_SSIM_R += self.criterionSSIM(
-                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 5
+                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 3
 
-        self.loss_MP = 0.05 * (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
+        self.loss_MP = (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
             self.fake_T2, self.real_T2) + 0.6 * self.criterionVgg(self.fake_T4, self.real_T4))
-        self.loss_mix_T = 0.15 * self.loss_idt_T + 0.85 * self.loss_SSIM_T
-        self.loss_mix_R = 0.15 * self.loss_idt_R + 0.85 * self.loss_SSIM_R
+        self.loss_mix_T = 0.3 * self.loss_idt_T + 1.7 * self.loss_SSIM_T
+        self.loss_mix_R = 0.3 * self.loss_idt_R + 1.7 * self.loss_SSIM_R
 
         if self.isTrain:
             self.loss_G = self.criterionGAN(
-                self.netD(self.fake_T), True) * 0.25
+                self.netD(self.fake_T), True) * 0.02
         else:
             self.loss_G = 0.0
             self.loss_D_syn = 0.0

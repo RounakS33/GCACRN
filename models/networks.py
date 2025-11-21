@@ -1,3 +1,5 @@
+from models.crsab import CRSAB
+from models.dasg import DASG
 import torch
 import torch.nn as nn
 from torch.nn import init
@@ -968,12 +970,17 @@ class Generator_drop(torch.nn.Module):
             nn.Conv2d(in_channels, 64, 5, 1, 2),
             nn.ReLU()
         )
-        self.cbam_e1 = CBAM(64, ratio=16)
+        # self.cbam1 = CBAM(64, ratio=16)
+        self.crsab1 = CRSAB(64, reduction=8)
+        self.gate1 = DASG(64)
         self.rstb_e1 = RSTB(
-            img_size=256,
-            in_chans=64,
-            embed_dim=32,
+            input_resolution=(256, 256),
+            in_channels=64,
+            dim=32,
             depth=4,
+            num_heads=4,
+            window_size=8,
+            patch_size=4
         )
         self.conv2 = nn.Sequential(
             nn.Conv2d(64, 96, 3, 2, 1),
@@ -983,11 +990,17 @@ class Generator_drop(torch.nn.Module):
             nn.Conv2d(96, 96, 3, 1, 1),
             nn.ReLU()
         )
+        # self.cbam2 = CBAM(96, ratio=32)
+        self.crsab2 = CRSAB(96, reduction=12)
+        self.gate2 = DASG(96)
         self.rstb_e2 = RSTB(
-            img_size=128,
-            in_chans=96,
-            embed_dim=48,
-            depth=4,
+            input_resolution=(128, 128),
+            in_channels=96,
+            dim=64,
+            depth=6,
+            num_heads=4,
+            window_size=8,
+            patch_size=2
         )
         self.conv4 = nn.Sequential(
             nn.Conv2d(96, 128, 3, 2, 1),
@@ -1001,12 +1014,17 @@ class Generator_drop(torch.nn.Module):
             nn.Conv2d(192, 192, 3, 1, 1),
             nn.ReLU()
         )
-        self.cbam_e2 = CBAM(192, ratio=32)
+        # self.cbam3 = CBAM(192, ratio=32)
+        self.crsab3 = CRSAB(192, reduction=24)
+        self.gate3 = DASG(192)
         self.rstb_e3 = RSTB(
-            img_size=64,
-            in_chans=192,
-            embed_dim=96,
-            depth=4,
+            input_resolution=(64, 64),
+            in_channels=192,
+            dim=128,
+            depth=6,
+            num_heads=4,
+            window_size=8,
+            patch_size=2
         )
         self.diconv = nn.Sequential(
             nn.Conv2d(192, 192, 3, 1, 2, dilation=2),
@@ -1029,7 +1047,7 @@ class Generator_drop(torch.nn.Module):
             in_chans=192,
             embed_dim=192,
             depths=(12,),
-            num_heads=(6,),
+            num_heads=(8,),
             window_size=4,
             drop_rate=0.0,
             attn_drop_rate=0.0,
@@ -1042,10 +1060,13 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         self.rstb_d1 = RSTB(
-            img_size=64,
-            in_chans=192,
-            embed_dim=96,
-            depth=4
+            input_resolution=(64, 64),
+            in_channels=192,
+            dim=128,
+            depth=6,
+            num_heads=4,
+            window_size=8,
+            patch_size=2
         )
         self.conv8 = nn.Sequential(
             nn.Conv2d(192, 96, 3, 1, 1),
@@ -1057,10 +1078,13 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         self.rstb_d2 = RSTB(
-            img_size=128,
-            in_chans=96,
-            embed_dim=48,
-            depth=4,
+            input_resolution=(128, 128),
+            in_channels=96,
+            dim=64,
+            depth=6,
+            num_heads=4,
+            window_size=8,
+            patch_size=2
         )
         self.conv9 = nn.Sequential(
             nn.Conv2d(96, 64, 3, 1, 1),
@@ -1072,10 +1096,13 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         self.rstb_d3 = RSTB(
-            img_size=256,
-            in_chans=64,
-            embed_dim=32,
-            depth=4
+            input_resolution=(256, 256),
+            in_channels=64,
+            dim=32,
+            depth=4,
+            num_heads=4,
+            window_size=8,
+            patch_size=4
         )
         self.conv10 = nn.Sequential(
             nn.Conv2d(64, 64, 3, 1, 1),
@@ -1096,17 +1123,21 @@ class Generator_drop(torch.nn.Module):
 
     def forward(self, x, h, c):
         x = self.conv1(x)
-        x = x + self.cbam_e1(x)
+        # x = x + self.cbam1(x)
+        x = x + self.crsab1(x)
         res1 = x
         x = self.rstb_e1(x)
         x = self.conv2(x)
         x = self.conv3(x)
+        # x = x + self.cbam2(x)
+        x = x + self.crsab2(x)
         res2 = x
         x = self.rstb_e2(x)
         x = self.conv4(x)
         x = self.conv5(x)
         x = self.conv6(x)
-        x = x + self.cbam_e2(x)
+        # x = x + self.cbam3(x)
+        x = x + self.crsab3(x)
         res3 = x
         x = self.rstb_e3(x)
         x = self.diconv(x)
@@ -1120,17 +1151,17 @@ class Generator_drop(torch.nn.Module):
         h, c = states[0]
 
         x = self.deconv1(x)
-        x = x + res3
+        x = self.gate3(x, res3)
         x = self.rstb_d1(x)
         x = self.conv8(x)
         frame2 = self.outframe1(x)
         x = self.deconv2(x)
-        x = x + res2
+        x = self.gate2(x, res2)
         x = self.rstb_d2(x)
         x = self.conv9(x)
         frame1 = self.outframe2(x)
         x = self.deconv3(x)
-        x = x + res1
+        x = self.gate1(x, res1)
         x = self.rstb_d3(x)
         x = self.conv10(x)
         x = self.output(x)

@@ -71,6 +71,8 @@ class ResizeNatural3Dataset(BaseDataset):
         self.dir_A1 = os.path.join(opt.dataroot, opt.phase + 'A1')
         self.dir_A2 = os.path.join(opt.dataroot, opt.phase + 'A2')
         self.dir_B = os.path.join(opt.dataroot, opt.phase + 'B')
+        print(
+            f'Debug: dataset phase {opt.phase}, {self.dir_A1}, {self.dir_A2}, {self.dir_B}')
 
         # load images from '/path/to/data/trainA1'
         self.A1_paths = sorted(make_dataset(self.dir_A1, opt.max_dataset_size))

@@ -70,7 +70,6 @@ class CustomDatasetDataLoader():
         Step 1: create a dataset instance given the name [dataset_mode]
         Step 2: create a multi-threaded data loader.
         """
-        self.opt = opt
         dataset_class = find_dataset_using_name(opt.dataset_mode)
 
         if opt.phase == 'test':
@@ -97,6 +96,8 @@ class CustomDatasetDataLoader():
             # Create validation dataset
             opt_val = copy.deepcopy(opt)
             opt_val.phase = 'val'
+            opt_val.isTrain = False
+            opt_val.no_flip = True
             self.val_dataset = dataset_class(opt_val)
             print("validation dataset [%s] was created" %
                   type(self.val_dataset).__name__)

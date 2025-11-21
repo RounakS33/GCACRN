@@ -467,6 +467,7 @@ class STconvert(nn.Module):
                                  norm_layer=norm_layer)
 
             self.layers.append(layer)
+        self.act = nn.LeakyReLU(negative_slope=0.2)
 
     def forward(self, x, h):
         x = self.patch_embed(x)
@@ -477,7 +478,7 @@ class STconvert(nn.Module):
             x, hidden_state = layer(x, h[index])
             hidden_states.append(hidden_state)
 
-        x = torch.sigmoid(self.PatchInflated(x))
+        x = self.act(self.PatchInflated(x))
 
         return hidden_states, x
 

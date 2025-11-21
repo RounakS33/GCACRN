@@ -83,6 +83,9 @@ if __name__ == '__main__':
     print('The number of validation images = %d' % val_size)
 
     model = create_model(opt)
+    if hasattr(torch, 'compile'):
+        print("Compiling model...")
+        model = torch.compile(model)
     model.setup(opt)
 
     # Initialize training state
@@ -164,15 +167,6 @@ if __name__ == '__main__':
                 model.compute_visuals()
                 visualizer.display_current_results(
                     model.get_current_visuals(), total_iters, save_result)
-
-            # if total_iters % opt.print_freq == 0:
-            #     if opt.display_id > 0:
-            #         visualizer.plot_current_losses(
-            #             training_state.current_epoch, float(epoch_iter) / len(dataset), losses)
-
-            #     pbar.set_postfix({k: f'{v:.4f}' for k, v in losses.items()})
-
-            # iter_data_time = time.time()
 
         avg_ssim = ssim_metric.compute()
         avg_psnr = psnr_metric.compute()

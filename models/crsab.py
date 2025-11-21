@@ -8,16 +8,14 @@ class CoordAtt(nn.Module):
     Coordinate Attention Module
     """
 
-    def __init__(self, inp, reduction=16, groups=4):
+    def __init__(self, inp, reduction=16):
         super(CoordAtt, self).__init__()
         self.pool_h = nn.AdaptiveAvgPool2d((None, 1))
         self.pool_w = nn.AdaptiveAvgPool2d((1, None))
         mip = max(16, inp // reduction)
-        mip = (mip + (groups - 1)) // groups * groups
         # 1x1 Conv to capture channel interactions
         self.conv1 = nn.Conv2d(inp, mip, kernel_size=1,
-                               stride=1, padding=0, bias=False)
-        self.gn1 = nn.GroupNorm(groups, mip)
+                               stride=1, padding=0, bias=True)
         self.act = nn.Hardswish()
         # Split convs to project back to original channel size
         self.conv_h = nn.Conv2d(mip, inp, kernel_size=1, stride=1, padding=0)
@@ -30,7 +28,6 @@ class CoordAtt(nn.Module):
         x_w = self.pool_w(x).permute(0, 1, 3, 2)
         y = torch.cat([x_h, x_w], dim=2)
         y = self.conv1(y)
-        y = self.gn1(y)
         y = self.act(y)
         x_h, x_w = torch.split(y, [H, W], dim=2)
         x_w = x_w.permute(0, 1, 3, 2)

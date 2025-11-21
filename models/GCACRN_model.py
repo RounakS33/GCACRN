@@ -47,9 +47,9 @@ class GCACRNModel(BaseModel, torch.nn.Module):
             self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)
 
             self.optimizer_G = torch.optim.AdamW(itertools.chain(self.netG_T.parameters(), self.netG_R.parameters()),
-                                                 lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=0.001)
+                                                 lr=opt.lr_G, betas=(opt.beta1, 0.999), weight_decay=0.001)
             self.optimizer_D = torch.optim.AdamW(itertools.chain(self.netD.parameters()),
-                                                 lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=0.01)
+                                                 lr=opt.lr_D, betas=(opt.beta1, 0.999), weight_decay=0.01)
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 

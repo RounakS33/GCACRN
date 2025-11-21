@@ -102,13 +102,12 @@ class BaseModel(ABC):
                 net = getattr(self, 'net' + name)
                 net.eval()
 
-    def train(self, mode=True):
+    def train(self):
         """Make models train mode during training time"""
-        self.isTrain = mode
         for name in self.model_names:
             if isinstance(name, str):
                 net = getattr(self, 'net' + name)
-                net.train(mode)
+                net.train()
         return self
 
     def test(self):

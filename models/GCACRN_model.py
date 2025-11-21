@@ -229,7 +229,7 @@ class GCACRNModel(BaseModel, torch.nn.Module):
         # Pass invalid data
         if not self.trainFlag:
             self.trainFlag = True
-            return
+            return False
 
         # Ds require no gradients when optimizing Gs
         self.set_requires_grad([self.netD], False)
@@ -244,6 +244,8 @@ class GCACRNModel(BaseModel, torch.nn.Module):
         self.optimizer_D.zero_grad()  # set D's gradients to zero
         self.backward_D()  # calculate gradients for D
         self.optimizer_D.step()
+
+        return True
 
     def print_parameter_status(self):
         """Print the number of trainable and frozen parameters for each network"""

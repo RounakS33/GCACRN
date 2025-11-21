@@ -83,9 +83,6 @@ if __name__ == '__main__':
     print('The number of validation images = %d' % val_size)
 
     model = create_model(opt)
-    if hasattr(torch, 'compile'):
-        print("Compiling model...")
-        model = torch.compile(model)
     model.setup(opt)
 
     # Initialize training state
@@ -135,11 +132,11 @@ if __name__ == '__main__':
         psnr_metric.reset()
         lpips_metric.reset()
         losses = {k: 0.0 for k in model.loss_names}
+        invalid = 0
 
         # Create a single progress bar for training
         pbar = tqdm(dataset.train_dataloader,
                     desc=f'Epoch {training_state.current_epoch}/{opt.niter + opt.niter_decay}')
-
         for i, data in enumerate(pbar):
             iter_start_time = time.time()
             if total_iters % opt.print_freq == 0:
@@ -150,7 +147,11 @@ if __name__ == '__main__':
             epoch_iter += 1
 
             model.set_input(data)
-            model.optimize_parameters()
+            is_optimized = model.optimize_parameters()
+
+            if not is_optimized:
+                invalid += 1
+                continue
 
             losses_dict = model.get_current_losses()
             for k, v in losses_dict.items():
@@ -173,7 +174,7 @@ if __name__ == '__main__':
         avg_lpips = lpips_metric.compute()
 
         for k, v in losses.items():
-            losses[k] = v / len(dataset.train_dataloader)
+            losses[k] = v / (len(dataset.train_dataloader) - invalid)
 
         with open(train_loss_log_file, "a") as f:
             f.write(

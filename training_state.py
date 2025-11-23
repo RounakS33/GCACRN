@@ -43,7 +43,7 @@ class TrainingState:
         with open(self.state_file, 'w') as f:
             json.dump(state, f)
 
-    def update_metrics(self, val_metrics, delta=0.001):
+    def update_metrics(self, val_metrics, delta=0.0001):
         """Update metrics and return whether to continue training"""
         current_ssim = float(val_metrics['val_ssim'])
         current_psnr = float(val_metrics['val_psnr'])
@@ -66,4 +66,3 @@ class TrainingState:
         """Increment epoch counter and save state"""
         self.current_epoch += 1
         self.save_state()
-

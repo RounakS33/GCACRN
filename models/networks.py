@@ -971,7 +971,7 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         # self.cbam1 = CBAM(64, ratio=16)
-        self.crsab1 = CRSAB(64, reduction=8)
+        self.crsab1 = CRSAB(64, reduction=4)
         self.gate1 = DASG(64)
         self.rstb_e1 = RSTB(
             input_resolution=(256, 256),
@@ -991,7 +991,7 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         # self.cbam2 = CBAM(96, ratio=32)
-        self.crsab2 = CRSAB(96, reduction=12)
+        self.crsab2 = CRSAB(96, reduction=6)
         self.gate2 = DASG(96)
         self.rstb_e2 = RSTB(
             input_resolution=(128, 128),
@@ -1015,7 +1015,7 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
         # self.cbam3 = CBAM(192, ratio=32)
-        self.crsab3 = CRSAB(192, reduction=24)
+        self.crsab3 = CRSAB(192, reduction=12)
         self.gate3 = DASG(192)
         self.rstb_e3 = RSTB(
             input_resolution=(64, 64),

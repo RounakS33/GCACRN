@@ -81,14 +81,13 @@ if __name__ == '__main__':
     val_size = len(dataset.val_dataset)
     print('The number of training images = %d' % train_size)
     print('The number of validation images = %d' % val_size)
-
-    model = create_model(opt)
-    model.setup(opt)
-
     # Initialize training state
     training_state = TrainingState(os.path.join(opt.checkpoints_dir, opt.name))
     total_iters = training_state.total_iters  # Load total iterations from state
-
+    if opt.continue_train:
+        opt.epoch_count = training_state.current_epoch
+    model = create_model(opt)
+    model.setup(opt)
     # Create or append to log file
     train_loss_log_file = os.path.join(
         opt.checkpoints_dir, opt.name, 'train_loss_log.txt')

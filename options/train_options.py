@@ -67,7 +67,7 @@ class TrainOptions(BaseOptions):
         # early stopping parameters
         parser.add_argument('--patience', type=int, default=3,
                             help='number of epochs to wait before early stopping if no improvement in validation loss')
-        parser.add_argument('--delta', type=float, default=0.001,
+        parser.add_argument('--delta', type=float, default=0.0001,
                             help='minimum change in validation loss to qualify as an improvement')
         self.isTrain = True
         return parser

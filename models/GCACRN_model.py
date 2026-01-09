@@ -189,21 +189,21 @@ class GCACRNModel(BaseModel, torch.nn.Module):
                 T_r = torch.pow(self.fake_Ts[i], 2.2)
                 R_r = torch.pow(self.fake_Rs[i], 2.2)
                 self.loss_idt_T += self.criterionIdt(
-                    self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i) * 2
+                    self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i)
                 self.loss_SSIM_T += self.criterionSSIM(
                     self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i)
                 if not self.isNatural and self.isTrain:
                     self.loss_res += self.criterionIdt2(
-                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 4
+                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 2
                     self.loss_idt_R += self.criterionIdt(
-                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 6
+                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 2
                     self.loss_SSIM_R += self.criterionSSIM(
-                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 3
+                        R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 2
 
-        self.loss_MP = (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
+        self.loss_MP = 0.05 * (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
             self.fake_T2, self.real_T2) + 0.6 * self.criterionVgg(self.fake_T4, self.real_T4))
-        self.loss_mix_T = 0.3 * self.loss_idt_T + 1.7 * self.loss_SSIM_T
-        self.loss_mix_R = 0.15 * self.loss_idt_R + 0.85 * self.loss_SSIM_R
+        self.loss_mix_T = 10 * self.loss_idt_T + self.loss_SSIM_T
+        self.loss_mix_R = 10 * self.loss_idt_R + self.loss_SSIM_R
 
         if self.isTrain:
             self.loss_G = self.criterionGAN(

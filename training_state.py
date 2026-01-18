@@ -43,13 +43,24 @@ class TrainingState:
         with open(self.state_file, 'w') as f:
             json.dump(state, f)
 
-    def update_metrics(self, val_metrics, delta=0.0001):
+    def update_metrics(self, val_metrics, delta=0.0001, metric='ssim'):
         """Update metrics and return whether to continue training"""
         current_ssim = float(val_metrics['val_ssim'])
         current_psnr = float(val_metrics['val_psnr'])
         current_lpips = float(val_metrics['val_lpips'])
+        current_metric = 0.0, best_metric = 0.0
+        
+        if metric == 'ssim':
+            current_metric = current_ssim
+            best_metric = self.best_ssim
+        elif metric == 'psnr':
+            current_metric = current_psnr
+            best_metric = self.best_psnr
+        elif metric == 'lpips':
+            current_metric = current_lpips
+            best_metric = self.best_lpips
 
-        if current_ssim > self.best_ssim + delta:
+        if current_metric > best_metric + delta:
             self.best_ssim = current_ssim
             self.best_psnr = current_psnr
             self.best_lpips = current_lpips

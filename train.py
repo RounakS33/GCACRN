@@ -200,7 +200,7 @@ if __name__ == '__main__':
             f.write(
                 f"{training_state.current_epoch},{current_ssim:.4f},{current_psnr:.4f},{current_lpips:.4f}\n")
 
-        if training_state.update_metrics(val_metrics, opt.delta):
+        if training_state.update_metrics(val_metrics, opt.delta, opt.metric):
             print(
                 f'Saving best model with SSIM: {current_ssim:.4f}, PSNR: {current_psnr:.4f}, LPIPS: {current_lpips:.4f}')
             model.save_networks('best')

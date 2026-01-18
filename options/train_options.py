@@ -69,5 +69,7 @@ class TrainOptions(BaseOptions):
                             help='number of epochs to wait before early stopping if no improvement in validation loss')
         parser.add_argument('--delta', type=float, default=0.0001,
                             help='minimum change in validation loss to qualify as an improvement')
+        parser.add_argument('--metric', type=str, default='ssim',
+                            help='metric to monitor for early stopping')
         self.isTrain = True
         return parser

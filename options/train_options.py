@@ -73,4 +73,3 @@ class TrainOptions(BaseOptions):
                             help='metric to monitor for early stopping')
         self.isTrain = True
         return parser
-    

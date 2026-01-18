@@ -48,7 +48,8 @@ class TrainingState:
         current_ssim = float(val_metrics['val_ssim'])
         current_psnr = float(val_metrics['val_psnr'])
         current_lpips = float(val_metrics['val_lpips'])
-        current_metric = 0.0, best_metric = 0.0
+        current_metric = 0.0
+        best_metric = 0.0
         
         if metric == 'ssim':
             current_metric = current_ssim

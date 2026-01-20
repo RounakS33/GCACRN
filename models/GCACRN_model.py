@@ -194,16 +194,16 @@ class GCACRNModel(BaseModel, torch.nn.Module):
                     self.fake_Ts[i], self.real_T) * np.power(sigma, iter_num - i)
                 if not self.isNatural and self.isTrain:
                     self.loss_res += self.criterionIdt2(
-                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 2
+                        real_I_r, (self.alpha * T_r + R_r)) * np.power(sigma, iter_num - i) * 5
                     self.loss_idt_R += self.criterionIdt(
                         R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 2
                     self.loss_SSIM_R += self.criterionSSIM(
                         R_r + real_T_r * self.alpha, real_I_r) * np.power(sigma, iter_num - i) * 2
 
-        self.loss_MP = 0.05 * (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
+        self.loss_MP = 0.5 * (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
             self.fake_T2, self.real_T2) + 0.6 * self.criterionVgg(self.fake_T4, self.real_T4))
-        self.loss_mix_T = 5 * self.loss_idt_T + 0.8 * self.loss_SSIM_T
-        self.loss_mix_R = 5 * self.loss_idt_R + 0.8 * self.loss_SSIM_R
+        self.loss_mix_T = 0.5 * self.loss_idt_T + 1.6 * self.loss_SSIM_T
+        self.loss_mix_R = 0.5 * self.loss_idt_R + 1.6 * self.loss_SSIM_R
 
         if self.isTrain:
             self.loss_G = self.criterionGAN(

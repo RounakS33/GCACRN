@@ -27,7 +27,7 @@ class TrainingState:
                 self.best_epoch = state.get('best_epoch', 0)
                 self.patience_counter = state.get('patience_counter', 0)
                 print(
-                    f'Loaded training state: epoch {self.current_epoch}, total iterations {self.total_iters}, best SSIM {self.best_ssim:.4f} at epoch {self.best_epoch}')
+                    f'Loaded training state: epoch {self.current_epoch}, total iterations {self.total_iters}, best SSIM {self.best_ssim:.4f}, best PSNR {self.best_psnr:.4f}, best LPIPS {self.best_lpips:.4f} at epoch {self.best_epoch}')
 
     def save_state(self):
         """Save current training state to file"""
@@ -52,12 +52,15 @@ class TrainingState:
         best_metric = 0.0
         
         if metric == 'ssim':
+            print (f'Current SSIM: {current_ssim:.4f}, Best SSIM: {self.best_ssim:.4f}')
             current_metric = current_ssim
             best_metric = self.best_ssim
         elif metric == 'psnr':
+            print (f'Current PSNR: {current_psnr:.4f}, Best PSNR: {self.best_psnr:.4f}')
             current_metric = current_psnr
             best_metric = self.best_psnr
         elif metric == 'lpips':
+            print (f'Current LPIPS: {current_lpips:.4f}, Best LPIPS: {self.best_lpips:.4f}')
             current_metric = current_lpips
             best_metric = self.best_lpips
 

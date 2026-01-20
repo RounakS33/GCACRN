@@ -24,6 +24,8 @@ class TrainingState:
                 self.current_epoch = state.get('current_epoch', 1)
                 self.total_iters = state.get('total_iters', 0)
                 self.best_ssim = state.get('best_ssim', 0.0)
+                self.best_psnr = state.get('best_psnr', 0.0)
+                self.best_lpips = state.get('best_lpips', 0.0)
                 self.best_epoch = state.get('best_epoch', 0)
                 self.patience_counter = state.get('patience_counter', 0)
                 print(

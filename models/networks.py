@@ -962,6 +962,211 @@ class SynData:
         return t, r_blur_mask, blend.float(), alpha2
 
 
+# class Generator_drop(torch.nn.Module):
+
+#     def __init__(self, in_channels, out_channels, n_feats):
+#         super(Generator_drop, self).__init__()
+#         self.conv1 = nn.Sequential(
+#             nn.Conv2d(in_channels, 64, 5, 1, 2),
+#             nn.ReLU()
+#         )
+#         # self.cbam1 = CBAM(64, ratio=16)
+#         self.crsab1 = CRSAB(64, reduction=4)
+#         self.gate1 = DASG(64)
+#         self.rstb_e1 = RSTB(
+#             input_resolution=(256, 256),
+#             in_channels=64,
+#             dim=32,
+#             depth=4,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=4
+#         )
+#         self.conv2 = nn.Sequential(
+#             nn.Conv2d(64, 96, 3, 2, 1),
+#             nn.ReLU()
+#         )
+#         self.conv3 = nn.Sequential(
+#             nn.Conv2d(96, 96, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         # self.cbam2 = CBAM(96, ratio=32)
+#         self.crsab2 = CRSAB(96, reduction=6)
+#         self.gate2 = DASG(96)
+#         self.rstb_e2 = RSTB(
+#             input_resolution=(128, 128),
+#             in_channels=96,
+#             dim=64,
+#             depth=6,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=2
+#         )
+#         self.conv4 = nn.Sequential(
+#             nn.Conv2d(96, 128, 3, 2, 1),
+#             nn.ReLU()
+#         )
+#         self.conv5 = nn.Sequential(
+#             nn.Conv2d(128, 192, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.conv6 = nn.Sequential(
+#             nn.Conv2d(192, 192, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         # self.cbam3 = CBAM(192, ratio=32)
+#         self.crsab3 = CRSAB(192, reduction=12)
+#         self.gate3 = DASG(192)
+#         self.rstb_e3 = RSTB(
+#             input_resolution=(64, 64),
+#             in_channels=192,
+#             dim=128,
+#             depth=6,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=2
+#         )
+#         self.diconv = nn.Sequential(
+#             nn.Conv2d(192, 192, 3, 1, 2, dilation=2),
+#             nn.ReLU(),
+#             nn.Conv2d(192, 192, 3, 1, 4, dilation=4),
+#             nn.ReLU(),
+#             nn.Conv2d(192, 192, 3, 1, 8, dilation=8),
+#             nn.ReLU(),
+#             nn.Conv2d(192, 192, 3, 1, 16, dilation=16),
+#             nn.ReLU()
+#         )
+#         self.conv7 = nn.Sequential(
+#             nn.Conv2d(192, 192, 3, 1, 1),
+#             nn.ReLU()
+#         )
+
+#         self.swin_lstm = SwinLSTM(
+#             img_size=64,
+#             patch_size=4,
+#             in_chans=192,
+#             embed_dim=192,
+#             depths=(12,),
+#             num_heads=(8,),
+#             window_size=4,
+#             drop_rate=0.0,
+#             attn_drop_rate=0.0,
+#             drop_path_rate=0.1
+#         )
+
+#         self.deconv1 = nn.Sequential(
+#             nn.Conv2d(192, 192*4, 3, 1, 1),
+#             nn.PixelShuffle(2),
+#             nn.ReLU()
+#         )
+#         self.rstb_d1 = RSTB(
+#             input_resolution=(64, 64),
+#             in_channels=192,
+#             dim=128,
+#             depth=6,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=2
+#         )
+#         self.conv8 = nn.Sequential(
+#             nn.Conv2d(192, 96, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.deconv2 = nn.Sequential(
+#             nn.Conv2d(96, 96*4, 3, 1, 1),
+#             nn.PixelShuffle(2),
+#             nn.ReLU()
+#         )
+#         self.rstb_d2 = RSTB(
+#             input_resolution=(128, 128),
+#             in_channels=96,
+#             dim=64,
+#             depth=6,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=2
+#         )
+#         self.conv9 = nn.Sequential(
+#             nn.Conv2d(96, 64, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.deconv3 = nn.Sequential(
+#             nn.Conv2d(64, 64*4, 3, 1, 1),
+#             nn.PixelShuffle(2),
+#             nn.ReLU()
+#         )
+#         self.rstb_d3 = RSTB(
+#             input_resolution=(256, 256),
+#             in_channels=64,
+#             dim=32,
+#             depth=4,
+#             num_heads=4,
+#             window_size=8,
+#             patch_size=4
+#         )
+#         self.conv10 = nn.Sequential(
+#             nn.Conv2d(64, 64, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.outframe1 = nn.Sequential(
+#             nn.Conv2d(96, 3, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.outframe2 = nn.Sequential(
+#             nn.Conv2d(64, 3, 3, 1, 1),
+#             nn.ReLU()
+#         )
+#         self.output = nn.Sequential(
+#             nn.Conv2d(64, out_channels, 3, 1, 1),
+#             nn.ReLU()
+#         )
+
+#     def forward(self, x, h, c):
+#         x = self.conv1(x)
+#         # x = x + self.cbam1(x)
+#         x = x + self.crsab1(x)
+#         res1 = x
+#         x = self.rstb_e1(x)
+#         x = self.conv2(x)
+#         x = self.conv3(x)
+#         # x = x + self.cbam2(x)
+#         x = x + self.crsab2(x)
+#         res2 = x
+#         x = self.rstb_e2(x)
+#         x = self.conv4(x)
+#         x = self.conv5(x)
+#         x = self.conv6(x)
+#         # x = x + self.cbam3(x)
+#         x = x + self.crsab3(x)
+#         res3 = x
+#         x = self.rstb_e3(x)
+#         x = self.diconv(x)
+#         x = self.conv7(x)
+#         x = x + res3
+
+#         if h is None and c is None:
+#             x, states = self.swin_lstm(x, [None])
+#         else:
+#             x, states = self.swin_lstm(x, [(h, c)])
+#         h, c = states[0]
+
+#         x = self.deconv1(x)
+#         x = self.gate3(x, res3)
+#         x = self.rstb_d1(x)
+#         x = self.conv8(x)
+#         frame2 = self.outframe1(x)
+#         x = self.deconv2(x)
+#         x = self.gate2(x, res2)
+#         x = self.rstb_d2(x)
+#         x = self.conv9(x)
+#         frame1 = self.outframe2(x)
+#         x = self.deconv3(x)
+#         x = self.gate1(x, res1)
+#         x = self.rstb_d3(x)
+#         x = self.conv10(x)
+#         x = self.output(x)
+#         return x, h, c, frame1, frame2
+
 class Generator_drop(torch.nn.Module):
 
     def __init__(self, in_channels, out_channels, n_feats):
@@ -1041,18 +1246,30 @@ class Generator_drop(torch.nn.Module):
             nn.ReLU()
         )
 
-        self.swin_lstm = SwinLSTM(
-            img_size=64,
-            patch_size=4,
-            in_chans=192,
-            embed_dim=192,
-            depths=(12,),
-            num_heads=(8,),
-            window_size=4,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            drop_path_rate=0.1
+        # ---------------------------------------------------------
+        # SwinLSTM replaced with ConvLSTM gates
+        # Channel size matches the bottleneck (192)
+        # ---------------------------------------------------------
+        lstm_in = 192 * 2  # Concatenated x and h
+        lstm_out = 192
+        
+        self.conv_i = nn.Sequential(
+            nn.Conv2d(lstm_in, lstm_out, 3, 1, 1),
+            nn.Sigmoid()
         )
+        self.conv_f = nn.Sequential(
+            nn.Conv2d(lstm_in, lstm_out, 3, 1, 1),
+            nn.Sigmoid()
+        )
+        self.conv_g = nn.Sequential(
+            nn.Conv2d(lstm_in, lstm_out, 3, 1, 1),
+            nn.Tanh()
+        )
+        self.conv_o = nn.Sequential(
+            nn.Conv2d(lstm_in, lstm_out, 3, 1, 1),
+            nn.Sigmoid()
+        )
+        # ---------------------------------------------------------
 
         self.deconv1 = nn.Sequential(
             nn.Conv2d(192, 192*4, 3, 1, 1),
@@ -1144,11 +1361,29 @@ class Generator_drop(torch.nn.Module):
         x = self.conv7(x)
         x = x + res3
 
+        # ---------------------------------------------------------
+        # ConvLSTM Forward Pass
+        # ---------------------------------------------------------
         if h is None and c is None:
-            x, states = self.swin_lstm(x, [None])
-        else:
-            x, states = self.swin_lstm(x, [(h, c)])
-        h, c = states[0]
+            h = torch.zeros_like(x)
+            c = torch.zeros_like(x)
+
+        # Concatenate current input and previous hidden state
+        xh = torch.cat([x, h], dim=1)
+
+        # Calculate gates
+        i = self.conv_i(xh)
+        f = self.conv_f(xh)
+        g = self.conv_g(xh)
+        o = self.conv_o(xh)
+
+        # Update cell and hidden states
+        c = f * c + i * g
+        h = o * torch.tanh(c)
+        
+        # The output of the LSTM to pass to the next layers is the hidden state
+        x = h
+        # ---------------------------------------------------------
 
         x = self.deconv1(x)
         x = self.gate3(x, res3)

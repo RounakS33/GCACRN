@@ -7,13 +7,11 @@ class DASG(nn.Module):
         super(DASG, self).__init__()
         inter_channels = channels // reduction
         self.W_g = nn.Sequential(
-            nn.Conv2d(channels, inter_channels, kernel_size=1,
-                      stride=1, padding=0, bias=False),
+            nn.Conv2d(channels, inter_channels, kernel_size=3, stride=1, padding=1, bias=False),
             nn.GroupNorm(4, inter_channels)
         )
         self.W_x = nn.Sequential(
-            nn.Conv2d(channels, inter_channels, kernel_size=1,
-                      stride=1, padding=0, bias=False),
+            nn.Conv2d(channels, inter_channels, kernel_size=3, stride=1, padding=1, bias=False),
             nn.GroupNorm(4, inter_channels)
         )
         # Generate Attention Mask from the combined (added) features

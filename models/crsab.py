@@ -82,4 +82,4 @@ class CRSAB(nn.Module):
         scale = self.spatial_att(x_out)
 
         # 3. Final Output
-        return x_out * scale
+        return x + (x_out * scale)

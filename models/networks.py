@@ -1145,10 +1145,12 @@ class Generator_drop(torch.nn.Module):
         x = x + res3
 
         if h is None and c is None:
-            x, states = self.swin_lstm(x, [None])
+            in_states = [None, None] 
         else:
-            x, states = self.swin_lstm(x, [(h, c)])
-        h, c = states[0]
+            in_states = list(zip(h, c))
+        x, out_states = self.swin_lstm(x, in_states)
+        h = [state[0] for state in out_states]
+        c = [state[1] for state in out_states]
 
         x = self.deconv1(x)
         x = self.gate3(x, res3)

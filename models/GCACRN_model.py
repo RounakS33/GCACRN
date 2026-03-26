@@ -202,8 +202,10 @@ class GCACRNModel(BaseModel, torch.nn.Module):
 
         self.loss_MP = 0.5 * (self.criterionVgg(self.fake_T, self.real_T) + 0.8 * self.criterionVgg(
             self.fake_T2, self.real_T2) + 0.6 * self.criterionVgg(self.fake_T4, self.real_T4))
-        self.loss_mix_T = 0.5 * self.loss_idt_T + 1.6 * self.loss_SSIM_T
-        self.loss_mix_R = 0.5 * self.loss_idt_R + 1.6 * self.loss_SSIM_R
+        # self.loss_mix_T = 0.5 * self.loss_idt_T + 1.6 * self.loss_SSIM_T
+        # self.loss_mix_R = 0.5 * self.loss_idt_R + 1.6 * self.loss_SSIM_R
+        self.loss_mix_T = self.loss_idt_T
+        self.loss_mix_R = self.loss_idt_R
 
         if self.isTrain:
             self.loss_G = self.criterionGAN(

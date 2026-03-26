@@ -1245,6 +1245,8 @@ class Generator_drop(torch.nn.Module):
             nn.Conv2d(192, 192, 3, 1, 1),
             nn.ReLU()
         )
+        self.lstm_downsample = nn.Conv2d(
+            192, 192, kernel_size=3, stride=2, padding=1)
 
         # ---------------------------------------------------------
         # SwinLSTM replaced with ConvLSTM gates
@@ -1252,7 +1254,7 @@ class Generator_drop(torch.nn.Module):
         # ---------------------------------------------------------
         lstm_in = 192 * 2  # Concatenated x and h
         lstm_out = 192
-        
+
         self.conv_i = nn.Sequential(
             nn.Conv2d(lstm_in, lstm_out, 3, 1, 1),
             nn.Sigmoid()
@@ -1364,6 +1366,7 @@ class Generator_drop(torch.nn.Module):
         # ---------------------------------------------------------
         # ConvLSTM Forward Pass
         # ---------------------------------------------------------
+        x = self.lstm_downsample(x)
         if h is None and c is None:
             h = torch.zeros_like(x)
             c = torch.zeros_like(x)
@@ -1380,7 +1383,7 @@ class Generator_drop(torch.nn.Module):
         # Update cell and hidden states
         c = f * c + i * g
         h = o * torch.tanh(c)
-        
+
         # The output of the LSTM to pass to the next layers is the hidden state
         x = h
         # ---------------------------------------------------------

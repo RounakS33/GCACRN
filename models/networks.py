@@ -1124,20 +1124,20 @@ class Generator_drop(torch.nn.Module):
     def forward(self, x, h, c):
         x = self.conv1(x)
         # x = x + self.cbam1(x)
-        x = x + self.crsab1(x)
+        # x = x + self.crsab1(x)
         res1 = x
         x = self.rstb_e1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         # x = x + self.cbam2(x)
-        x = x + self.crsab2(x)
+        # x = x + self.crsab2(x)
         res2 = x
         x = self.rstb_e2(x)
         x = self.conv4(x)
         x = self.conv5(x)
         x = self.conv6(x)
         # x = x + self.cbam3(x)
-        x = x + self.crsab3(x)
+        # x = x + self.crsab3(x)
         res3 = x
         x = self.rstb_e3(x)
         x = self.diconv(x)

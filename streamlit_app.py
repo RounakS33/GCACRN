@@ -75,14 +75,6 @@ def _to_uint8(t: torch.Tensor) -> np.ndarray:
 
 
 def _run_inference(model, img_tensor: torch.Tensor, n_cascade: int = 3) -> list[dict]:
-    """
-    Replicates model.forward() step-by-step and captures full-res, half-res,
-    and quarter-res outputs for BOTH generators at every cascade iteration.
-
-    Returns a list of n_cascade dicts, one per iteration:
-        { 'T_256', 'T_128', 'T_64', 'R_256', 'R_128', 'R_64' }
-    All tensors are [3, H, W], clamped to [0, 1], on CPU.
-    """
     dev = model.device
     model.real_I = img_tensor.to(dev)
 
@@ -141,8 +133,7 @@ def _compute_metrics(pred: torch.Tensor, gt: torch.Tensor, dev):
         data_range=1.0).to(dev)(p, g).item()
     psnr = PeakSignalNoiseRatio(data_range=1.0).to(dev)(p, g).item()
     lpips = LearnedPerceptualImagePatchSimilarity(
-        net_type="vgg", normalize=True
-    ).to(dev)(p, g).item()
+        net_type="vgg", normalize=True).to(dev)(p, g).item()
     return ssim, psnr, lpips
 
 
@@ -168,7 +159,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.title("GCACRN — Reflection Removal Cascade Visualizer")
+st.title("GCACRN — Reflection Removal Visualizer")
 st.caption(
     "Upload a reflection-corrupted image. The model runs specified number of cascade iterations "
     "with both pretrained Transmission (T) and Reflection (R) generators. All intermediate "
@@ -177,16 +168,14 @@ st.caption(
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.header("Model")
+    st.header("Model Configuration")
 
     ckpt_dir = st.text_input("Checkpoints dir", "./checkpoints")
 
     _avail: list[str] = []
     if os.path.isdir(ckpt_dir):
         _avail = sorted(
-            d
-            for d in os.listdir(ckpt_dir)
-            if os.path.isdir(os.path.join(ckpt_dir, d))
+            d for d in os.listdir(ckpt_dir) if os.path.isdir(os.path.join(ckpt_dir, d))
         )
     if not _avail:
         _avail = ["GCACRN"]
@@ -194,21 +183,25 @@ with st.sidebar:
     exp_name = st.selectbox("Experiment", _avail)
     epoch = st.text_input("Epoch suffix", "latest")
     n_cascade = st.number_input(
-        "Cascade stages", min_value=1, max_value=10, value=3, step=1,
-        help="Number of T/R generator iterations. Display shows n+1 images (init + n stages).",
+        "Cascade stages", min_value=1, max_value=10, value=3, step=1)
+
+    # ADD THIS NEW SLIDER
+    alpha_blend = st.slider(
+        "Alpha Blending Factor (α)",
+        min_value=0.5, max_value=1.0, value=1.0, step=0.05,
+        help="Adjusts the transmission attenuation: Î = αT + R. Set to 1.0 for real images, or ~0.8 for synthetic."
     )
+
     use_gpu = st.checkbox("Use GPU", value=torch.cuda.is_available())
 
     st.divider()
-    st.header("Images")
-    up_I = st.file_uploader(
-        "Reflection-corrupted image",
-        type=["png", "jpg", "jpeg", "bmp", "tiff"],
-    )
+    st.header("Image Uploads")
+    up_I = st.file_uploader("Reflection-corrupted image (I)",
+                            type=["png", "jpg", "jpeg", "bmp", "tiff"])
     up_T = st.file_uploader(
-        "Ground-truth transmission",
-        type=["png", "jpg", "jpeg", "bmp", "tiff"],
-    )
+        "Ground-truth transmission (T) [Optional]", type=["png", "jpg", "jpeg", "bmp", "tiff"])
+    up_R = st.file_uploader(
+        "Ground-truth reflection (R) [Optional]", type=["png", "jpg", "jpeg", "bmp", "tiff"])
 
 # ── Gate on upload ─────────────────────────────────────────────────────────────
 if up_I is None:
@@ -217,7 +210,10 @@ if up_I is None:
 
 img_I = Image.open(up_I).convert("RGB")
 img_T_gt = Image.open(up_T).convert("RGB") if up_T else None
+img_R_gt = Image.open(up_R).convert("RGB") if up_R else None
+
 has_gt = img_T_gt is not None
+has_r_gt = img_R_gt is not None
 
 # ── Upload preview + run button ───────────────────────────────────────────────
 col_prev1, col_prev2, col_run = st.columns([1, 1, 1])
@@ -225,19 +221,20 @@ with col_prev1:
     st.subheader("Input (I)")
     st.image(img_I, use_container_width=True)
 with col_prev2:
-    st.subheader("Transmission (T)" if has_gt else "GT Transmission")
+    st.subheader("Ground Truths Provided:")
     if has_gt:
-        st.image(img_T_gt, use_container_width=True)
+        st.write("✅ Transmission (T)")
     else:
-        st.caption("Not provided — metrics and losses will be skipped.")
+        st.write("❌ Transmission (T)")
+    if has_r_gt:
+        st.write("✅ Reflection (R)")
+    else:
+        st.write("❌ Reflection (R)")
 with col_run:
-    st.subheader("Configuration")
-    st.write(f"**Experiment:** `{exp_name}`")
-    st.write(f"**Epoch:** `{epoch}`")
+    st.subheader("Run")
     dev_label = "GPU (CUDA)" if (
         use_gpu and torch.cuda.is_available()) else "CPU"
     st.write(f"**Device:** `{dev_label}`")
-    st.write("")
     run_btn = st.button("Run Inference", type="primary",
                         use_container_width=True)
 
@@ -257,6 +254,8 @@ if run_btn or _key not in st.session_state:
     st.session_state[_key] = steps
     st.session_state["tensor_I"] = tensor_I
     st.session_state["tensor_T_gt"] = _preprocess(img_T_gt) if has_gt else None
+    st.session_state["tensor_R_gt"] = _preprocess(
+        img_R_gt) if has_r_gt else None
 elif _key in st.session_state:
     steps = st.session_state[_key]
 else:
@@ -265,6 +264,8 @@ else:
 
 tensor_I: torch.Tensor = st.session_state["tensor_I"]
 tensor_T_gt: torch.Tensor | None = st.session_state["tensor_T_gt"]
+tensor_R_gt: torch.Tensor | None = st.session_state.get("tensor_R_gt")
+
 init_T_np = _to_uint8(tensor_I.squeeze(0))
 init_R_np = np.full((256, 256, 3), 26, dtype=np.uint8)  # 0.1 × 255 ≈ 26
 
@@ -277,43 +278,63 @@ st.caption(
     "Top row: Transmission (T) progression. Bottom row: Reflection (R) progression.")
 
 n_stages = len(steps)
-# Total columns = Init + all cascade stages + Ground Truth (if provided)
-n_cols = n_stages + 2 if has_gt else n_stages + 1
+
+# Determine if we need an extra column for Ground Truths at the end
+show_gt_col = has_gt or has_r_gt
+n_cols = n_stages + 2 if show_gt_col else n_stages + 1
 
 fig_casc, axes_casc = plt.subplots(2, n_cols, figsize=(3 * n_cols, 6))
 
-# Prepare Transmission (T) images and labels
-t_labels = ["$T_0$"] + [f"$\hat{{T}}_{i+1}$" for i in range(n_stages)]
+# Prepare base lists (Init + All Cascade Stages)
+t_labels = ["Init: $T_0$ (Input I)"] + \
+    [f"Iter {i+1}: $\hat{{T}}_{i+1}$" for i in range(n_stages)]
 t_imgs = [init_T_np] + [_to_uint8(s["T_256"]) for s in steps]
 
-# Prepare Reflection (R) images and labels
-r_labels = ["$R_0$"] + [f"$\hat{{R}}_{i+1}$" for i in range(n_stages)]
+r_labels = ["Init: $R_0$ (Constant)"] + \
+    [f"Iter {i+1}: $\hat{{R}}_{i+1}$" for i in range(n_stages)]
 r_imgs = [init_R_np] + [_to_uint8(s["R_256"]) for s in steps]
 
-# Append Ground Truths to the end if available
-if has_gt and tensor_T_gt is not None:
-    t_labels.append("$T$ (GT)")
-    t_imgs.append(_to_uint8(tensor_T_gt.squeeze(0)))
+# Handle the final "Target" column if applicable
+if show_gt_col:
+    # --- Transmission GT Row ---
+    if has_gt and tensor_T_gt is not None:
+        t_labels.append("Target: $T$ (Ground Truth)")
+        t_imgs.append(_to_uint8(tensor_T_gt.squeeze(0)))
+    else:
+        # If no T ground truth is provided but R is, just repeat the final estimate to keep grid square
+        t_labels.append("$\hat{T}$ (Final Estimate)")
+        t_imgs.append(_to_uint8(steps[-1]["T_256"]))
 
-    r_labels.append("$\hat{R}$ (GT)")
-    # Approximate GT reflection as I - T (clamped to prevent artifacting)
-    gt_r = (tensor_I.squeeze(0) - tensor_T_gt.squeeze(0)).clamp(0, 1)
-    r_imgs.append(_to_uint8(gt_r))
+    # --- Reflection GT Row ---
+    if has_r_gt and tensor_R_gt is not None:
+        # Scenario A: User uploaded the actual Ground Truth Reflection
+        r_labels.append("Target: $R$ (Ground Truth)")
+        r_imgs.append(_to_uint8(tensor_R_gt.squeeze(0)))
+    elif has_gt and tensor_T_gt is not None:
+        # Scenario B: No GT Reflection, but we have GT Transmission (Calculate Proxy)
+        r_labels.append("Target: $I - T$ (Proxy GT)")
+        gt_r = (tensor_I.squeeze(0) - tensor_T_gt.squeeze(0)).clamp(0, 1)
+        r_imgs.append(_to_uint8(gt_r))
+    else:
+        # Scenario C: Just repeat the final estimate
+        r_labels.append("$\hat{R}$ (Final Estimate)")
+        r_imgs.append(_to_uint8(steps[-1]["R_256"]))
 
 # Plot the grid
 for c in range(n_cols):
     # Top Row: Transmission
     axes_casc[0, c].imshow(t_imgs[c])
-    axes_casc[0, c].set_title(t_labels[c], fontsize=16, pad=12)
+    axes_casc[0, c].set_title(t_labels[c], fontsize=15,
+                              fontweight="bold", pad=12)
     axes_casc[0, c].axis("off")
 
     # Bottom Row: Reflection
     axes_casc[1, c].imshow(r_imgs[c])
-    axes_casc[1, c].set_title(r_labels[c], fontsize=16, pad=12)
+    axes_casc[1, c].set_title(r_labels[c], fontsize=15,
+                              fontweight="bold", pad=12)
     axes_casc[1, c].axis("off")
 
 fig_casc.tight_layout()
-# Change to use_column_width=True if your Streamlit is outdated
 st.pyplot(fig_casc, use_container_width=True)
 plt.close(fig_casc)
 
@@ -322,154 +343,178 @@ plt.close(fig_casc)
 # ─────────────────────────────────────────────────────────────────────────────
 st.divider()
 st.header("2 · Multi-Scale Generator Outputs")
-st.caption(
-    "Each generator produces outputs at three resolutions (256, 128, 64) "
-    "used for hierarchical perceptual losses. Shown here for every iteration."
-)
+st.caption("Each generator produces outputs at three resolutions (256, 128, 64). Expand to view the intermediate feature maps packed into RGB channels.")
 
 _MS_KEYS = ["T_256", "T_128", "T_64", "R_256", "R_128", "R_64"]
 _MS_LABELS = ["T · 256×256", "T · 128×128", "T · 64×64",
               "R · 256×256", "R · 128×128", "R · 64×64"]
 
 for i, step in enumerate(steps):
-    st.subheader(f"Iteration {i + 1}")
-    cols = st.columns(6)
-    for col, key, label in zip(cols, _MS_KEYS, _MS_LABELS):
-        with col:
-            img_show = _to_uint8(step[key])
-            st.image(img_show, caption=label, use_container_width=True)
+    # Using st.expander to make them collapsible. We keep the final iteration expanded by default.
+    with st.expander(f"Iteration {i + 1} Multi-Scale Features", expanded=(i == len(steps) - 1)):
+        cols = st.columns(6)
+        for col, key, label in zip(cols, _MS_KEYS, _MS_LABELS):
+            with col:
+                img_show = _to_uint8(step[key])
+                st.image(img_show, caption=label, use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Section 3 — T vs R comparison across iterations (delta view)
+# Section 3 — Layer Decomposition & Reconstruction Residual
 # ─────────────────────────────────────────────────────────────────────────────
 st.divider()
-st.header("3 · T + R + Residual  (per iteration)")
-st.caption(
-    "At each iteration: predicted T, predicted R, and the residual "
-    "I - T - R (highlights what the model hasn't yet explained)."
-)
+st.header("3 · Layer Decomposition & Reconstruction Residual")
+st.caption("Visualizing the decoupling accuracy at each step. The residual (I - T̂ - R̂) highlights unaccounted signals (grey=0 error).")
 
 inp_np = _to_uint8(tensor_I.squeeze(0))
 for i, step in enumerate(steps):
     t_np = _to_uint8(step["T_256"])
     r_np = _to_uint8(step["R_256"])
-    # Residual in float before clamping so we can see the signed error
     resid = tensor_I.squeeze(0) - step["T_256"] - step["R_256"]
-    resid_display = ((resid.permute(1, 2, 0).numpy() + 1.0) / 2.0 * 255).astype(
-        np.uint8
-    )
+    resid_display = ((resid.permute(1, 2, 0).numpy() + 1.0) /
+                     2.0 * 255).astype(np.uint8)
 
-    with st.expander(f"Iteration {i + 1}", expanded=(i == len(steps) - 1)):
+    with st.expander(f"Iteration {i + 1} Decomposition", expanded=(i == len(steps) - 1)):
         c1, c2, c3, c4 = st.columns(4)
         c1.image(inp_np, caption="Input (I)", use_container_width=True)
         c2.image(t_np, caption=f"T̂  (iter {i+1})", use_container_width=True)
         c3.image(r_np, caption=f"R̂  (iter {i+1})", use_container_width=True)
-        c4.image(
-            resid_display, caption="Residual I−T̂−R̂  (grey=0)", use_container_width=True
-        )
+        c4.image(resid_display, caption="Residual I−T̂−R̂",
+                 use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Section 4 — Final output (+ GT comparison if available)
+# Section 4 — Final output & Reconstruction
 # ─────────────────────────────────────────────────────────────────────────────
 st.divider()
-st.header("4 · Final Output")
+st.header("4 · Final Output & Network Synergy")
 
 final_T = steps[-1]["T_256"]
 final_R = steps[-1]["R_256"]
-inp_np = _to_uint8(tensor_I.squeeze(0))  # Ensure the input array is ready
+# reconstructed_I = (final_T + final_R).clamp(0, 1)
+# FACTOR ALPHA INTO THE FINAL RECONSTRUCTION HERE
+reconstructed_I = ((alpha_blend * final_T) + final_R).clamp(0, 1)
+
+# --- Row 1: Transmission ---
+st.subheader("Transmission")
+cols_T = st.columns(4)
+cols_T[0].image(inp_np, caption="Input (I)", use_container_width=True)
 
 if has_gt and tensor_T_gt is not None:
-    gt_cpu = tensor_T_gt.squeeze(0).cpu()
+    gt_cpu_T = tensor_T_gt.squeeze(0).cpu()
+    err_T = (final_T - gt_cpu_T).abs().mean(0).numpy()
+    err_norm_T = (err_T - err_T.min()) / (err_T.max() - err_T.min() + 1e-8)
+    err_color_T = (cm.hot(err_norm_T)[:, :, :3] * 255).astype(np.uint8)
 
-    # Calculate error map
-    err = (final_T - gt_cpu).abs().mean(0).numpy()
-    err_norm = (err - err.min()) / (err.max() - err.min() + 1e-8)
-    err_color = (cm.hot(err_norm)[:, :, :3] * 255).astype(np.uint8)
-
-    # 5-column layout to include the Original Input
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.image(inp_np, caption="Input (I)", use_container_width=True)
-    c2.image(_to_uint8(gt_cpu), caption="Ground TruthTransmission (T)",
-             use_container_width=True)
-    c3.image(_to_uint8(final_T), caption="Predicted T (final)",
-             use_container_width=True)
-    c4.image(_to_uint8(final_R), caption="Predicted R (final)",
-             use_container_width=True)
-    c5.image(err_color, caption="Pixel error map (T)",
-             use_container_width=True)
+    cols_T[1].image(_to_uint8(gt_cpu_T),
+                    caption="Ground Truth T", use_container_width=True)
+    cols_T[2].image(_to_uint8(final_T), caption="Predicted T",
+                    use_container_width=True)
+    cols_T[3].image(err_color_T, caption="Pixel Error Map (T)",
+                    use_container_width=True)
 else:
-    # 3-column layout if no Ground Truth is provided
-    c1, c2, c3 = st.columns(3)
-    c1.image(inp_np, caption="Input (I)", use_container_width=True)
-    c2.image(_to_uint8(final_T), caption="Predicted T (final)",
-             use_container_width=True)
-    c3.image(_to_uint8(final_R), caption="Predicted R (final)",
-             use_container_width=True)
+    cols_T[1].image(_to_uint8(final_T), caption="Predicted T",
+                    use_container_width=True)
+
+# --- Row 2: Reflection & Synergy ---
+st.subheader("Reflection & Synergy")
+cols_R = st.columns(4)
+cols_R[0].image(_to_uint8(reconstructed_I),
+                caption="Reconstructed Î (T + R)", use_container_width=True)
+
+if has_r_gt and tensor_R_gt is not None:
+    gt_cpu_R = tensor_R_gt.squeeze(0).cpu()
+    err_R = (final_R - gt_cpu_R).abs().mean(0).numpy()
+    err_norm_R = (err_R - err_R.min()) / (err_R.max() - err_R.min() + 1e-8)
+    err_color_R = (cm.hot(err_norm_R)[:, :, :3] * 255).astype(np.uint8)
+
+    cols_R[1].image(_to_uint8(gt_cpu_R),
+                    caption="Ground Truth R", use_container_width=True)
+    cols_R[2].image(_to_uint8(final_R), caption="Predicted R",
+                    use_container_width=True)
+    cols_R[3].image(err_color_R, caption="Pixel Error Map (R)",
+                    use_container_width=True)
+else:
+    cols_R[1].image(_to_uint8(final_R), caption="Predicted R",
+                    use_container_width=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Section 5 — Metrics (per-iteration + final)
+# Section 5 — Quantitative Metrics (per-iteration + final)
 # ─────────────────────────────────────────────────────────────────────────────
-if has_gt and tensor_T_gt is not None:
+if has_gt or has_r_gt:
     st.divider()
-    st.header("5 · Metrics  (vs GT Transmission)")
-
-    gt_cpu = tensor_T_gt.squeeze(0).cpu()
+    st.header("5 · Quantitative Metrics")
     dev = model.device
-
-    iter_ssim, iter_psnr, iter_lpips = [], [], []
-    with st.spinner("Computing per-iteration SSIM / PSNR / LPIPS…"):
-        for step in steps:
-            s, p, l = _compute_metrics(step["T_256"], gt_cpu, dev)
-            iter_ssim.append(s)
-            iter_psnr.append(p)
-            iter_lpips.append(l)
-
-    # Summary cards for the final iteration
-    m1, m2, m3 = st.columns(3)
-    delta_ssim = iter_ssim[-1] - iter_ssim[0] if len(iter_ssim) > 1 else None
-    delta_psnr = iter_psnr[-1] - iter_psnr[0] if len(iter_psnr) > 1 else None
-    delta_lpips = iter_lpips[-1] - \
-        iter_lpips[0] if len(iter_lpips) > 1 else None
-    m1.metric("SSIM ↑  (final)",  f"{iter_ssim[-1]:.4f}",
-              delta=f"{delta_ssim:+.4f} vs iter 1" if delta_ssim is not None else None)
-    m2.metric("PSNR ↑  (final)",  f"{iter_psnr[-1]:.2f} dB",
-              delta=f"{delta_psnr:+.2f} dB vs iter 1" if delta_psnr is not None else None)
-    m3.metric("LPIPS ↓  (final)", f"{iter_lpips[-1]:.4f}",
-              delta=f"{delta_lpips:+.4f} vs iter 1" if delta_lpips is not None else None,
-              delta_color="inverse")
-
-    # Per-iteration trend charts
     iters = list(range(1, len(steps) + 1))
+
     fig_m, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 3))
 
-    ax1.plot(iters, iter_ssim, "o-", color="#4C9BE8")
+    if has_gt and tensor_T_gt is not None:
+        gt_cpu_T = tensor_T_gt.squeeze(0).cpu()
+        iter_ssim_T, iter_psnr_T, iter_lpips_T = [], [], []
+        for step in steps:
+            s, p, l = _compute_metrics(step["T_256"], gt_cpu_T, dev)
+            iter_ssim_T.append(s)
+            iter_psnr_T.append(p)
+            iter_lpips_T.append(l)
+
+        ax1.plot(iters, iter_ssim_T, "o-",
+                 color="#4C9BE8", label="Transmission")
+        ax2.plot(iters, iter_psnr_T, "o-",
+                 color="#5DB85D", label="Transmission")
+        ax3.plot(iters, iter_lpips_T, "o-",
+                 color="#E8784C", label="Transmission")
+
+        st.subheader("Transmission Final Metrics")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("SSIM ↑", f"{iter_ssim_T[-1]:.4f}")
+        m2.metric("PSNR ↑", f"{iter_psnr_T[-1]:.2f} dB")
+        m3.metric("LPIPS ↓", f"{iter_lpips_T[-1]:.4f}", delta_color="inverse")
+
+    if has_r_gt and tensor_R_gt is not None:
+        gt_cpu_R = tensor_R_gt.squeeze(0).cpu()
+        iter_ssim_R, iter_psnr_R, iter_lpips_R = [], [], []
+        for step in steps:
+            s, p, l = _compute_metrics(step["R_256"], gt_cpu_R, dev)
+            iter_ssim_R.append(s)
+            iter_psnr_R.append(p)
+            iter_lpips_R.append(l)
+
+        ax1.plot(iters, iter_ssim_R, "x--", color="#4C9BE8",
+                 alpha=0.6, label="Reflection")
+        ax2.plot(iters, iter_psnr_R, "x--", color="#5DB85D",
+                 alpha=0.6, label="Reflection")
+        ax3.plot(iters, iter_lpips_R, "x--", color="#E8784C",
+                 alpha=0.6, label="Reflection")
+
+        st.subheader("Reflection Final Metrics")
+        m4, m5, m6 = st.columns(3)
+        m4.metric("SSIM ↑", f"{iter_ssim_R[-1]:.4f}")
+        m5.metric("PSNR ↑", f"{iter_psnr_R[-1]:.2f} dB")
+        m6.metric("LPIPS ↓", f"{iter_lpips_R[-1]:.4f}", delta_color="inverse")
+
     ax1.set_title("SSIM ↑")
     ax1.set_xlabel("Cascade iteration")
-    ax1.set_xticks(iters)
-    ax1.set_ylim(max(0, min(iter_ssim) - 0.02), min(1, max(iter_ssim) + 0.02))
-
-    ax2.plot(iters, iter_psnr, "o-", color="#5DB85D")
-    ax2.set_title("PSNR ↑  (dB)")
+    ax1.legend()
+    ax2.set_title("PSNR ↑ (dB)")
     ax2.set_xlabel("Cascade iteration")
-    ax2.set_xticks(iters)
-
-    ax3.plot(iters, iter_lpips, "o-", color="#E8784C")
+    ax2.legend()
     ax3.set_title("LPIPS ↓")
     ax3.set_xlabel("Cascade iteration")
-    ax3.set_xticks(iters)
+    ax3.legend()
 
     for ax in (ax1, ax2, ax3):
         ax.grid(True, alpha=0.3)
+        ax.set_xticks(iters)
+
     fig_m.tight_layout()
     st.pyplot(fig_m, use_container_width=True)
     plt.close(fig_m)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Section 6 — Loss values (requires GT)
+# Section 6 — Loss values (requires GT Transmission)
 # ─────────────────────────────────────────────────────────────────────────────
 if has_gt and tensor_T_gt is not None:
     st.divider()
-    st.header("6 · Loss Decomposition  (final iteration vs GT)")
+    st.header("6 · Loss Decomposition")
     st.caption(
         "Computed in eval mode with isNatural=True. "
         "Discriminator (D_syn) and adversarial (G) losses are 0 during inference."
@@ -486,7 +531,6 @@ if has_gt and tensor_T_gt is not None:
     )
     df_loss["Value"] = df_loss["Value"].map(lambda x: f"{x:.6f}")
 
-    # Display only the table, spanning the center of the screen
     st.dataframe(df_loss, use_container_width=True, hide_index=True)
 
 # ─────────────────────────────────────────────────────────────────────────────

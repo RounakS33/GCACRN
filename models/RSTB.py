@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from models.SwinLSTM_B import SwinTransformerBlock, PatchEmbed
+from models.SwinLSTM_D import SwinTransformerBlock, PatchEmbed
 import collections.abc
 
 

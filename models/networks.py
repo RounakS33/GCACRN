@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 import scipy.stats as st
 import code
-from models.SwinLSTM_B import SwinLSTM
+from models.SwinLSTM_D import SwinLSTM
 from torchmetrics.image import StructuralSimilarityIndexMeasure
 from models.cbam import CBAM
 from models.RSTB import RSTB
@@ -1046,12 +1046,10 @@ class Generator_drop(torch.nn.Module):
             patch_size=4,
             in_chans=192,
             embed_dim=192,
-            depths=(12, 12),
-            num_heads=(8, 8),
-            window_size=4,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            drop_path_rate=0.1
+            depths_downsample=(2, 2),
+            depths_upsample=(2, 2),
+            num_heads=(4, 4),
+            window_size=4
         )
 
         self.deconv1 = nn.Sequential(
@@ -1145,12 +1143,14 @@ class Generator_drop(torch.nn.Module):
         x = x + res3
 
         if h is None and c is None:
-            in_states = [None, None] 
+            states_down = [None, None]
+            states_up = [None, None]
         else:
-            in_states = list(zip(h, c))
-        x, out_states = self.swin_lstm(x, in_states)
-        h = [state[0] for state in out_states]
-        c = [state[1] for state in out_states]
+            states_down = list(zip(h[:2], c[:2]))
+            states_up = list(zip(h[2:], c[2:]))
+        x, states_down, states_up = self.swin_lstm(x, states_down, states_up)
+        h = [state[0] for state in states_down] + [state[0] for state in states_up]
+        c = [state[1] for state in states_down] + [state[1] for state in states_up]
 
         x = self.deconv1(x)
         x = self.gate3(x, res3)
